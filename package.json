@@ -1,0 +1,12 @@
+{
+  "name": "fullstack-weather-portal",
+  "version": "1.0.0",
+  "description": "Fullstack React (Vite) + Node.js (MVC) + PostgreSQL project with JWT Auth & Weather",
+  "scripts": {
+    "dev:server": "npm run dev --prefix server",
+    "start:server": "npm run start --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "seed": "npm run seed --prefix server",
+    "build:client": "npm run build --prefix client"
+  }
+}
