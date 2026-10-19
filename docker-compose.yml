@@ -3,7 +3,7 @@ services:
   # 1. PostgreSQL Database Service
   # -------------------------------------------------------------
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: weather_postgres
     restart: unless-stopped
     environment:

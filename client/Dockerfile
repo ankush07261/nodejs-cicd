@@ -20,8 +20,8 @@ ENV VITE_WEATHER_API_KEY=$VITE_WEATHER_API_KEY
 # Compile production bundle
 RUN npm run build
 
-# Stage 2: Serve static files with Nginx
-FROM nginx:alpine
+# Stage 2: Serve static files with Nginx (Debian-based standard image)
+FROM nginx:latest
 
 # Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
