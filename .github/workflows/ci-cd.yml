@@ -131,6 +131,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Lowercase Repository Name
+        run: |
+          echo "REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Build and Push Server Image
         uses: docker/build-push-action@v5
         with:
@@ -138,8 +142,8 @@ jobs:
           file: ./server/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/weather-server:latest
-            ghcr.io/${{ github.repository }}/weather-server:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/weather-server:latest
+            ghcr.io/${{ env.REPO_LOWER }}/weather-server:${{ github.sha }}
 
       - name: Build and Push Client Image
         uses: docker/build-push-action@v5
@@ -148,8 +152,8 @@ jobs:
           file: ./client/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/weather-client:latest
-            ghcr.io/${{ github.repository }}/weather-client:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/weather-client:latest
+            ghcr.io/${{ env.REPO_LOWER }}/weather-client:${{ github.sha }}
           build-args: |
             VITE_API_URL=http://localhost:5000/api
             VITE_WEATHER_API_KEY=29d395129097a089a2a83bc2acf3cdcb
