@@ -7,6 +7,9 @@
     "start:server": "npm run start --prefix server",
     "dev:client": "npm run dev --prefix client",
     "seed": "npm run seed --prefix server",
-    "build:client": "npm run build --prefix client"
+    "build:client": "npm run build --prefix client",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "npm run test --prefix server",
+    "test:client": "npm run test --prefix client"
   }
 }

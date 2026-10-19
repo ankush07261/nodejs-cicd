@@ -42,6 +42,13 @@ jobs:
           node --check src/config/initSchema.js
         working-directory: ./server
 
+      - name: Run Backend Unit & Integration Tests
+        run: npm test
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: super_secret_jwt_key_2026_fullstack
+
   # -------------------------------------------------------------
   # Job 2: Frontend Compilation & Build
   # -------------------------------------------------------------
@@ -62,6 +69,10 @@ jobs:
 
       - name: Install Frontend Dependencies
         run: npm ci
+        working-directory: ./client
+
+      - name: Run Frontend Unit Tests
+        run: npm test
         working-directory: ./client
 
       - name: Build Vite Production Bundle
