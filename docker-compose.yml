@@ -59,7 +59,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
-        VITE_WEATHER_API_KEY: ${VITE_WEATHER_API_KEY:-29d395129097a089a2a83bc2acf3cdcb}
+        VITE_WEATHER_API_KEY: ${VITE_WEATHER_API_KEY}
     container_name: weather_client
     restart: unless-stopped
     ports:

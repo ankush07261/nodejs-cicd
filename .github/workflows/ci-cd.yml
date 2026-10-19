@@ -69,7 +69,7 @@ jobs:
         working-directory: ./client
         env:
           VITE_API_URL: http://localhost:5000/api
-          VITE_WEATHER_API_KEY: 29d395129097a089a2a83bc2acf3cdcb
+          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
 
   # -------------------------------------------------------------
   # Job 3: Docker Build & Compose Verification
@@ -106,7 +106,7 @@ jobs:
           tags: weather-client:test
           build-args: |
             VITE_API_URL=http://localhost:5000/api
-            VITE_WEATHER_API_KEY=29d395129097a089a2a83bc2acf3cdcb
+            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
 
   # -------------------------------------------------------------
   # Job 4: Publish Docker Images (Runs only on Push to Main)
@@ -156,4 +156,4 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/weather-client:${{ github.sha }}
           build-args: |
             VITE_API_URL=http://localhost:5000/api
-            VITE_WEATHER_API_KEY=29d395129097a089a2a83bc2acf3cdcb
+            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}

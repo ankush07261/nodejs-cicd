@@ -12,7 +12,7 @@ COPY . .
 
 # Vite build environment variables (can be overridden during build)
 ARG VITE_API_URL=http://localhost:5000/api
-ARG VITE_WEATHER_API_KEY=29d395129097a089a2a83bc2acf3cdcb
+ARG VITE_WEATHER_API_KEY
 
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WEATHER_API_KEY=$VITE_WEATHER_API_KEY
