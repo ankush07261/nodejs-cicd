@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, cicd-aws ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, cicd-aws ]
   workflow_dispatch:
 
 permissions:
@@ -79,7 +79,7 @@ jobs:
         run: npm run build
         working-directory: ./client
         env:
-          VITE_API_URL: http://localhost:5000/api
+          VITE_API_URL: /api
           VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
 
   # -------------------------------------------------------------
@@ -100,6 +100,9 @@ jobs:
       - name: Validate Docker Compose Configuration
         run: docker compose config
 
+      - name: Validate Production Docker Compose Configuration
+        run: docker compose -f docker-compose.prod.yml config
+
       - name: Build Backend Docker Image
         uses: docker/build-push-action@v5
         with:
@@ -116,17 +119,17 @@ jobs:
           push: false
           tags: weather-client:test
           build-args: |
-            VITE_API_URL=http://localhost:5000/api
+            VITE_API_URL=/api
             VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
 
   # -------------------------------------------------------------
-  # Job 4: Publish Docker Images (Runs only on Push to Main)
+  # Job 4: Publish Docker Images to GHCR
   # -------------------------------------------------------------
   publish-images:
     name: Publish Images to GitHub Container Registry (GHCR)
     runs-on: ubuntu-latest
     needs: [docker-validation]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-aws')
 
     steps:
       - name: Checkout Code
@@ -166,5 +169,80 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/weather-client:latest
             ghcr.io/${{ env.REPO_LOWER }}/weather-client:${{ github.sha }}
           build-args: |
-            VITE_API_URL=http://localhost:5000/api
+            VITE_API_URL=/api
             VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
+
+  # -------------------------------------------------------------
+  # Job 5: Deploy Application to AWS EC2
+  # -------------------------------------------------------------
+  deploy-ec2:
+    name: Deploy Application to AWS EC2
+    runs-on: ubuntu-latest
+    needs: [publish-images]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-aws')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Lowercase Repository Name
+        run: |
+          echo "REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Copy docker-compose.prod.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "weather-app"
+
+      - name: Deploy Containers on EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          REPO_LOWER: ${{ env.REPO_LOWER }}
+          DB_HOST: ${{ secrets.DB_HOST || 'postgres' }}
+          DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+          DB_USER: ${{ secrets.DB_USER || 'postgres' }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres_secure_pass_2026' }}
+          DB_NAME: ${{ secrets.DB_NAME || 'weather_fullstack_db' }}
+          DB_SSL: ${{ secrets.DB_SSL || 'false' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'super_secret_jwt_key_2026_fullstack' }}
+          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY || '' }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: REPO_LOWER,DB_HOST,DB_PORT,DB_USER,DB_PASSWORD,DB_NAME,DB_SSL,JWT_SECRET,VITE_WEATHER_API_KEY
+          script: |
+            set -e
+            cd ~/weather-app
+
+            # 1. Generate .env file on EC2 from pipeline secrets
+            cat << EOF > .env
+            REPO_LOWER=${REPO_LOWER}
+            DB_HOST=${DB_HOST}
+            DB_PORT=${DB_PORT}
+            DB_USER=${DB_USER}
+            DB_PASSWORD=${DB_PASSWORD}
+            DB_NAME=${DB_NAME}
+            DB_SSL=${DB_SSL}
+            JWT_SECRET=${JWT_SECRET}
+            JWT_EXPIRES_IN=7d
+            CORS_ORIGIN=*
+            VITE_API_URL=/api
+            VITE_WEATHER_API_KEY=${VITE_WEATHER_API_KEY}
+            EOF
+
+            # 2. Authenticate Docker with GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 3. Pull latest prebuilt images from GHCR
+            docker compose -f docker-compose.prod.yml pull
+
+            # 4. Spin up containers in detached mode
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # 5. Clean up stale/dangling images to preserve disk space on EC2
+            docker image prune -f

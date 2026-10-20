@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 
 # Vite build environment variables (can be overridden during build)
-ARG VITE_API_URL=http://localhost:5000/api
+ARG VITE_API_URL=/api
 ARG VITE_WEATHER_API_KEY
 
 ENV VITE_API_URL=$VITE_API_URL
