@@ -1,11 +1,18 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 
 const app = express();
+
+// Trust reverse proxy (nginx) for rate limiting & secure cookies
+app.set('trust proxy', 1);
+
+// Security Headers
+app.use(helmet());
 
 // Middleware
 app.use(
