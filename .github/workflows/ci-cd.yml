@@ -99,14 +99,20 @@ jobs:
       - name: Validate Docker Compose Configuration
         run: docker compose config
         env:
-          JWT_SECRET: ci-validation-only
-          DB_PASSWORD: ci-validation-only
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
       - name: Validate Production Docker Compose Configuration
         run: docker compose -f docker-compose.prod.yml config
         env:
-          JWT_SECRET: ci-validation-only
-          DB_PASSWORD: ci-validation-only
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
       - name: Build Backend Docker Image
         uses: docker/build-push-action@v5
