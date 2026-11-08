@@ -171,15 +171,15 @@ describe('userController - CRUD operations', () => {
       assert.match(res.jsonData.message, /at least 3 characters/i);
     });
 
-    it('should return 400 if password is shorter than 4 characters', async () => {
+    it('should return 400 if password is shorter than 8 characters', async () => {
       const { req, res } = createMockReqRes({
-        req: { body: { username: 'validuser', password: '123' } },
+        req: { body: { username: 'validuser', password: '1234567' } },
       });
 
       await userController.createUser(req, res);
 
       assert.strictEqual(res.statusCode, 400);
-      assert.match(res.jsonData.message, /at least 4 characters/i);
+      assert.match(res.jsonData.message, /at least 8 characters/i);
     });
 
     it('should return 400 if role is invalid', async () => {
@@ -268,13 +268,13 @@ describe('userController - CRUD operations', () => {
       UserModel.findById = async () => ({ id: 5, username: 'user5', role: 'user' });
 
       const { req, res } = createMockReqRes({
-        req: { params: { id: '5' }, body: { password: '12' } },
+        req: { params: { id: '5' }, body: { password: '1234567' } },
       });
 
       await userController.updateUser(req, res);
 
       assert.strictEqual(res.statusCode, 400);
-      assert.match(res.jsonData.message, /at least 4 characters/i);
+      assert.match(res.jsonData.message, /at least 8 characters/i);
     });
 
     it('should update user successfully and return 200', async () => {

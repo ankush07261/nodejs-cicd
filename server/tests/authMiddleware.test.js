@@ -116,7 +116,7 @@ describe('authMiddleware - verifyToken', () => {
     assert.strictEqual(res.jsonData, null);
   });
 
-  it('should support raw token without Bearer prefix', async () => {
+  it('should return 401 if raw token is sent without Bearer prefix', async () => {
     const mockUser = { id: 2, username: 'bob', role: 'user' };
     const validToken = jwt.sign({ id: mockUser.id, username: mockUser.username }, JWT_SECRET, {
       expiresIn: '1h',
@@ -130,7 +130,10 @@ describe('authMiddleware - verifyToken', () => {
 
     await verifyToken(req, res, next);
 
-    assert.strictEqual(isNextCalled(), true);
-    assert.deepStrictEqual(req.user, mockUser);
+    // Raw tokens (without Bearer) are now rejected for security
+    assert.strictEqual(res.statusCode, 401);
+    assert.strictEqual(res.jsonData.success, false);
+    assert.match(res.jsonData.message, /bearer scheme/i);
+    assert.strictEqual(isNextCalled(), false);
   });
 });

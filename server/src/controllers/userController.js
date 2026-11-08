@@ -86,10 +86,10 @@ const createUser = async (req, res) => {
       });
     }
 
-    if (password.length < 4) {
+    if (password.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 4 characters long.',
+        message: 'Password must be at least 8 characters long.',
       });
     }
 
@@ -180,10 +180,10 @@ const updateUser = async (req, res) => {
     }
 
     if (password) {
-      if (password.length < 4) {
+      if (password.length < 8) {
         return res.status(400).json({
           success: false,
-          message: 'Password must be at least 4 characters long.',
+          message: 'Password must be at least 8 characters long.',
         });
       }
       updateData.password_hash = await bcrypt.hash(password, 10);

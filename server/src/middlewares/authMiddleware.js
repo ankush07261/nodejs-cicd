@@ -11,10 +11,15 @@ const verifyToken = async (req, res, next) => {
     });
   }
 
-  // Accept both "Bearer <token>" and raw "<token>"
-  const token = authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7).trim()
-    : authHeader.trim();
+  // Accept only "Bearer <token>" — reject raw tokens
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied. Authorization header must use Bearer scheme.',
+    });
+  }
+
+  const token = authHeader.slice(7).trim();
 
   if (!token) {
     return res.status(401).json({
@@ -24,7 +29,12 @@ const verifyToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_2026_fullstack');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('[authMiddleware.verifyToken] JWT_SECRET is not set');
+      return res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
     
     // Check if user still exists in database
     const user = await UserModel.findById(decoded.id);

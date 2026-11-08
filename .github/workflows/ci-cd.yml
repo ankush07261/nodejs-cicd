@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   # -------------------------------------------------------------
@@ -80,7 +79,7 @@ jobs:
         working-directory: ./client
         env:
           VITE_API_URL: /api
-          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY || 'ci_test_key' }}
+          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY }}
 
   # -------------------------------------------------------------
   # Job 3: Docker Build & Compose Verification
@@ -130,6 +129,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [docker-validation]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-aws')
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout Code
@@ -185,6 +187,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.EC2_HOST }}" ] && missing="$missing EC2_HOST"
+          [ -z "${{ secrets.EC2_SSH_KEY }}" ] && missing="$missing EC2_SSH_KEY"
+          [ -z "${{ secrets.JWT_SECRET }}" ] && missing="$missing JWT_SECRET"
+          [ -z "${{ secrets.DB_PASSWORD }}" ] && missing="$missing DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "ERROR: Missing required secrets:$missing"
+            exit 1
+          fi
+
       - name: Set Lowercase Repository Name
         run: |
           echo "REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -205,11 +219,11 @@ jobs:
           DB_HOST: ${{ secrets.DB_HOST || 'postgres' }}
           DB_PORT: ${{ secrets.DB_PORT || '5432' }}
           DB_USER: ${{ secrets.DB_USER || 'postgres' }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres_secure_pass_2026' }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME || 'weather_fullstack_db' }}
           DB_SSL: ${{ secrets.DB_SSL || 'false' }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'super_secret_jwt_key_2026_fullstack' }}
-          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY || '' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          VITE_WEATHER_API_KEY: ${{ secrets.VITE_WEATHER_API_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER || 'ubuntu' }}
@@ -219,7 +233,8 @@ jobs:
             set -e
             cd ~/weather-app
 
-            # 1. Generate .env file on EC2 from pipeline secrets
+            # 1. Generate .env file on EC2 from pipeline secrets (mode 600 to protect secrets)
+            umask 077
             cat << EOF > .env
             REPO_LOWER=${REPO_LOWER}
             DB_HOST=${DB_HOST}
@@ -230,10 +245,9 @@ jobs:
             DB_SSL=${DB_SSL}
             JWT_SECRET=${JWT_SECRET}
             JWT_EXPIRES_IN=7d
-            CORS_ORIGIN=*
-            VITE_API_URL=/api
-            VITE_WEATHER_API_KEY=${VITE_WEATHER_API_KEY}
+            CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
             EOF
+            chmod 600 .env
 
             # 2. Authenticate Docker with GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -244,5 +258,8 @@ jobs:
             # 4. Spin up containers in detached mode
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            # 5. Clean up stale/dangling images to preserve disk space on EC2
+            # 5. Remove registry credentials
+            docker logout ghcr.io
+
+            # 6. Clean up stale/dangling images to preserve disk space on EC2
             docker image prune -f
